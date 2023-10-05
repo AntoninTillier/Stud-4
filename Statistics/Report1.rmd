@@ -1,0 +1,573 @@
+---
+title: "Compte-rendu Statistiques -- TP1"
+author: |
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+fontsize: 12 pt
+subtitle: Statistiques descriptives et visualisation d'information
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Ceci est un document R Markedown. Markdown est un langage permettant de générer facilement des documents HTML, PDF et MS Word.
+
+Voici le rendu du TP: 
+
+
+```{r, echo=FALSE}
+# On n'oublie pas d'inclure le fichier csv que l'on étudie.
+library(readr)
+
+poke <- read_delim("~/Desktop/maths/poke.csv", ";", escape_double = FALSE, col_types = cols(evolving_stade = col_character(),  is_legendary = col_character(), pokedex_number = col_character()), trim_ws = TRUE)
+```
+
+
+## Exercice 1
+
+On considère le data frame généré par le code suivant : 
+```{r}
+T <- data.frame(V1=rep(c(1, NA), 3), V2=c(seq(1,5),NA))
+T
+```
+
+1. Modifier la valeur située ligne 3, colonne 1 de $T$ par la valeur 10.
+
+```{r}
+T[3,1] <- 10
+T
+```
+
+2. Dans la colonne 2, remplacer toutes les valeurs $\geq 4$ par la valeur 20. On pourra utiliser la commande `ifelse(phi, valT, valF)` qui rend la valeur `valT` si la condition logique `phi` est vérifiée et `valF` sinon. 
+
+```{r}
+T$V2 <- ifelse(T$V2 >= 4, 20, T$V2)
+T
+```
+
+3. On peut détecter si une valeur possède la valeur `NA` grâce à la commande `is.na()`.
+Remplacer toutes les valeurs `NA` de $T$ par la valeur 0.
+
+```{r}
+T$V1 <- ifelse(is.na(T$V1), 0, T$V1)
+T$V2 <- ifelse(is.na(T$V2), 0, T$V2)
+T
+```
+    
+4. Ajouter une nouvelle colonne à $T$ qui est la moyenne des deux colonnes $V_1$ et $V_2$. 
+
+```{r}
+V3 <- apply(T, 1, mean)
+T <- data.frame(T, V3)
+T
+```
+  
+5. Ajouter au dataframe `poke` la nouvelle colonne `base_stats` qui est correspond à la somme des différentes statistiques du pokémon, c.a.d des variables `hp`, `atk`, ..., `spd`.
+
+```{r}
+base_stats <- apply(
+  poke[, c("hp", "atk", "def", "sp_atk", "sp_def", "spd")],
+  1, sum)
+poke <- data.frame(poke, base_stats)
+```
+
+## Exercice
+
+1. Donner la moyenne, l’écart-type et la médiane de la variable `against_fire` et `against_water`. Lequel de ces deux types (fire ou water) semble le plus efficace contre les pokémons ?
+
+```{r}
+X <- data.frame(Var=c("against_fire","against_water"),
+                Mean=c(mean(poke$against_fire),
+                      mean(poke$against_water)),
+                Sd=c(sd(poke$against_fire),
+                    sd(poke$against_water)),
+                Median=c(median(poke$against_fire),
+                        median(poke$against_water)))  
+X
+```
+
+>_En moyenne le `against_fire`  semble le plus efficace contre les pokémons._
+
+2. Déterminer le type le plus efficace au global sur l’ensemble des pokémons. Détaillez votre raisonnement.
+
+```{r}
+stat <- apply(poke[,24:40],2,mean)
+typeStat <- data.frame(stat)
+subset(typeStat, stat == max(stat))
+```
+
+>_Pour trouver le type le plus éfficace, il suffit de faire la moyenne de chaque colone type._
+>_Puis d'extraire la valeur maximun retourner par le calcule expliquer avant._
+
+## Exercice 2
+
+1. Dresser l'histogramme de la variable `capt_rate`. Cette variable suit-elle une loi normale ? Expliquer votre réponse.
+
+```{r}
+ hist(poke$capt_rate,
+     main = "Histogramme des fréquences de la capt_rat des pokémons",
+     xlab = "capt_rat", col="lightBlue")
+```
+
+>_Hypothèse nulle : l'échantillon suit une loi normale. Par conséquent si la p-value du test est significative, l'échantillon ne suit pas une loi normale.
+Si `p-value > 0.05`, alors l'hypothèse de normalité est donc tolérée._
+
+```{r}
+shapiro.test(pnorm(poke$capt_rate, 
+                   mean =  mean(poke$capt_rate), 
+                   sd = sd(poke$capt_rate)))
+```
+
+>_Donc la variable `capt_rate` ne suit pas une loi normale._
+
+2. Dresser les graphiques des fréquences cumulées croissantes et la boite à moustaches de `capt_rate`. Que constatez-vous ? Quelles sont les similitudes entre ces deux graphiques ?  
+
+```{r}
+# Fréquences cumulées croissantes
+plot(ecdf(poke$capt_rate),
+     verticals = TRUE,
+     do.points = FALSE,
+     col= "blue",
+     main = "Fréquences cumulées : capt_rate")
+legend("topleft", legend=c("Freq. cumulées"),
+      col=c("blue"), lty=1, cex=1)
+
+boxplot(poke$capt_rate,
+        horizontal = TRUE,
+        xlab = "capt_rate",
+        col = "blue",
+        main = "Répartition des capt_rate des pokémons")
+```
+
+>_On constate que le graphique des fréquences cumulées permet de voir que la variable ne suit pas une loi normale et permet de situer le taux de captures des pokémons. Je constate aussi que la répartition est centré a droite de la médiane_
+>_Les similitudes entre ces deux graphiques sont la médiane et le centrage de la population de pokémon._
+  
+## Exercice 3
+
+Code pour le grahique:
+
+```{r}
+# install.packages("RColorBrewer")
+library("RColorBrewer")
+counts <- table(poke$generation)
+barplot(counts,
+     main = "Nombre de pokémons par génération",
+     col = brewer.pal(n = length(counts), name = "YlGnBu"))
+```
+
+## Exercice 4
+
+1. Quel est le coefficient de corrélation entre les variables `sp_atk` et `base_stats`. Pouvez-vous expliquez pourquoi ce score est élevé ? 
+
+```{r}
+cor(poke$sp_atk, poke$base_stats)
+```
+
+> _Corrélation forte des données, nous avons 0.5 < 0.7438027 < 0.8. Ces deux variables ont une liaison linéaire positive.
+Ce score est élevé car `sp_atk` fait partie du calcule qui a permit de créer `base_stats`._
+
+2. Donner le code R permettant de générer le graphique ci-dessous. 
+
+```{r}
+# install.packages("ggplot2")
+# install.packages("viridis")
+library("ggplot2")
+library("viridis")
+
+ggplot(poke, aes(x=sp_atk, y=base_stats, color=is_legendary, group=is_legendary)) +
+  geom_point(aes(color = is_legendary), alpha = 0.75)+
+  scale_color_manual(values=c('#999999','#E69F00'))+
+  geom_smooth(method=lm) +
+  theme_classic() + 
+  labs(color = "is legendary",
+       x = "Sp. Atk",
+       y = "Total stats",
+       title = "Total des statistiques d'un pokémon en fonction de sa Sp. Atk")
+```
+
+## Exercice 5
+
+Supposons que l'on veuille visualiser, pour chaque type, la proportion de chaque autre type de Pokémon. Par exemple, pour le type `grass`, on souhaite connaitre la proportion de pokémons de types `grass / t` où `t` est un type quelconque.
+
+Plus formellement, on souhaite visualiser la proportion de chaque combinaison de types $(t_1, t_2)$. 
+
+1. Créer un dataframe doté de deux colonnes `t1` et `t2` où chaque ligne correspond à un pokémon et où `t1` correspond au type primaine du pokémon et `t2` son type secondaire. Dans le cas où `type2 = NA`, `t2` prendra la valeur de `type1`. Par exemple, si on a `type1 = grass` et `type2 = NA`, on affectera à  `t2` également la valeur `grass` ce qui correspond à dire que le pokémon est de type "plante" pur. 
+
+```{r}
+t1 <- poke$type1
+t2 <- poke$type2
+type <- data.frame(t1,t2)
+type$t2 <- ifelse(is.na(type$t2), type$t1, type$t2)
+```
+
+2. Donner le code R permettant de générer le graphique des proportions des types secondaires pour chaque type de pokémon. 
+```{r, include=FALSE}
+# couleur de pokepedia
+col_type <- function(a) {
+    if(a == "bug") {
+        return("#CCCC33")
+    }
+    if(a == "dark") {
+        return("#735A4A")
+    }
+    if(a == "dragon") {
+      return("#8858F6")
+    }
+  if(a == "electric") {
+    return("#FFC631")
+  }
+  if(a == "fairy") {
+    return("#E09AE3")
+  }
+  if(a == "fighting") {
+    return("#A55239")
+  }
+  if(a == "fire") {
+    return("#F75231")
+  }
+  if(a == "flying") {
+    return("#9CADF7")
+  }
+  if(a == "ghost") {
+    return("#6363B5")
+  }
+  if(a == "grass") {
+    return("#7BCE52")
+  }
+  if(a == "ground") {
+    return("#D6B55A")
+  }
+  if(a == "ice") {
+    return("#5ACEE7")
+  }
+  if(a == "normal") {
+    return("#ADA594")
+  }
+  if(a == "poison") {
+    return("#B55AA5")
+  }
+  if(a == "psychic") {
+    return("#FF73A5")
+  }
+  if(a == "rock") {
+    return("#BDA55A")
+  }
+  if(a == "steel") {
+    return("#ADADC6")
+  }
+  if(a == "water") {
+    return("#399CFF")
+  }
+  if (is.na(a)) {
+    return("#FFFFFF")
+  }
+  else {
+    return("#FFFFFF")
+    }
+}
+```
+
+```{r}
+library("ggplot2")
+ggplot(type) +
+  geom_bar(width=0.75, mapping = aes(x = t1, fill = t2), position = "fill") +
+  coord_flip()+
+  scale_fill_manual(values= unlist(lapply(sort(unique(type$t1)), col_type))) +
+  theme_classic() +
+  theme(legend.position="bottom")+
+  labs(fill = "Type Secondaire",
+       x = "Type",
+       y = "Prop.",
+       title = "Proportions des types secondaires par type de pokémon")
+```
+  
+## Exercice 6
+
+On souhaite vérifier l'hypothèse que les pokémons roses sont davantage genrés comme femelle (`percentage_male` < 50) que les autres pokémons. 
+
+1. Dresser l'histogramme de la variable `percentage_male` et proposer une méthode de discrétisation pour cette variable. 
+
+```{r}
+library("ggplot2")
+test <- subset(poke, !is.na(percentage_male))
+ggplot(test) +
+  geom_histogram(mapping = aes(x =percentage_male), bins = 25,
+                 fill="#78AF9F") +
+  theme_classic() +
+  theme(legend.position="bottom")+
+  labs(fill = "Type Secondaire",
+       x = "pourcentage",
+       y = "Prop.",
+       title = "Proportions de pokemon pour percentage_male");
+```
+
+>_La méthode de discrétisation pour cette variable est a méthode des ruptures naturelles dite méthode de jenks. Cette méthode regarde la distribution de `percentage_male` et cherche les points de rupture afin de la séparer en différents seuils._
+
+```{r}
+library (cartography)
+seuils <- getBreaks (test$percentage_male, nclass = 6, method = "fisher-jenks")
+```
+
+2. Créer une nouvelle variable `is_pink` qui vaut 1 si le pokémon est rose et 0 sinon. 
+
+```{r}
+is_pink <- ifelse(test$color =='Pink', 1, 0)
+```
+
+3. Proposer une méthode permettant vérifier l'hypothèse puis conclure. 
+
+>_L’hypothèse est que les pokémons roses sont davantage genrés comme femelle (percentage_male < 50) que les autres pokémons. En premier lieu, il faut créer la table de contingence._
+
+```{r}
+is_female <- ifelse(test$percentage_male < 50, 1, 0)
+
+tablePF <- table(is_pink,is_female)
+
+```
+  
+>_Puis il nous faut obtenir,  les probabilités conditionnelles $\mathcal\ P(Y = y_{j}|X = x_{i})$._
+>_Nous obtenons ici, $\mathcal\ P(is\_female = 1 | is\_pink = 1) \approx 0.36$ donc la probabilité qu’un pokémon soit une femelle sachant qu'il est rose est de $\mathcal\ 36\%$._
+
+>_Il est aussi visible que $\mathcal\ P(is\_female = 1 | is\_pink = 0) \approx 0.06$._
+>_La probabilité qu'un pokémon soit une femelle sachant qu'elle n'est pas rose est de $\mathcal\ 0.06\%$._
+  
+  
+```{r}
+prop.table(tablePF, margin = 1)
+```
+
+>_Donc l'hypothèse, que les pokémons rose soit plus des femelles que les autres pokémons semblent compromise._
+>_Il nous faut regarder l'indépendance des deux variables. Ainsi, l’hypothèse les variables is_pink et is_female sont indépendantes. L'hypothèse est acceptée si $\mathcal\ p > 0.05\%$._
+
+
+```{r}
+chisq.test(tablePF)
+```
+
+>_Ici, la p-valeur est bien inférieure à 0.05. On peut donc rejeter l’hypothèse et affirmer que les variables is_female et is_female ne sont pas indépendantes. On peut alors penser que les pokémons rose sont plus souvent rose._
+
+## Exercice 7
+
+1. Code pour le grahique:
+
+```{r}
+# Obtention de la moyenne de l'écart-type de `varname` group by `groupnames`
+library(plyr)
+data_summary <- function(data, varname, groupnames){
+  require(plyr)
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm = TRUE),
+      sd = sd(x[[col]], na.rm = TRUE))
+  }
+  data_sum <- ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- plyr::rename(data_sum, c("mean" = varname))
+ return(data_sum)
+}
+```
+
+```{r}
+library(plyr)
+summary <- data_summary(poke,
+                        varname = "base_stats",
+                        groupnames = c("type1","generation"));
+
+summary$sd <- ifelse(is.na(summary$sd), 0, summary$sd)
+```
+
+```{r warning=FALSE}
+library(plyr)
+library(ggplot2)
+ggplot(summary, aes(x=generation, y=base_stats, color=type1)) + 
+  geom_point()+
+  scale_color_manual(values= unlist(lapply(sort(unique(summary$type1)), col_type)))+
+  
+  geom_smooth(aes(x = generation, y = base_stats, color = type1), se = F,
+            method = "loess") +
+theme_classic() +
+labs(title="Évolution par génération du Total stats. des pokémon selon leur type",
+     x="Génération",
+     y = "Total stats",
+     color = "Type")
+```
+
+Quelles analyses peut-on en tirer ? Quel est son défaut majeur ?
+
+>_On peut tirer de ce graphique, l'évolution des statistiques globales par type de pokémon en fonction de sa génération. Son défaut majeur est son manque de clarté pour examiner les données._
+
+2. Reprendre le graphique précédent et faire figurer uniquement les courbes des types `dark` et `fairy`. On ajoutera également un ruban pour générer les écarts-types. 
+
+```{r}
+library(plyr)
+pokeDF <- subset(poke, type1 == "dark" | type1 == "fairy")
+summaryDF <- data_summary(pokeDF,
+                        varname = "base_stats",
+                        groupnames = c("type1","generation"));
+
+summaryDF$sd <- ifelse(is.na(summaryDF$sd), 0, summaryDF$sd)
+```
+  
+```{r warning=FALSE}
+library(plyr)
+library(ggplot2)
+ggplot(summaryDF, aes(x=generation, y=base_stats, color=type1)) +
+  geom_point()+
+  geom_ribbon(aes(ymin=base_stats-sd, ymax=base_stats+sd, fill = type1), alpha=0.3,
+              show.legend = FALSE)  +
+  scale_color_manual(values=c(col_type("dark"),col_type("fairy"))) +
+  scale_fill_manual(values=c(col_type("dark"),col_type("fairy"))) +
+  geom_smooth(aes(x = generation, y = base_stats, color = type1), se = F,
+            method = "loess") +
+theme_classic() +
+labs(title="Évolution par génération du Total stats. des pokémon selon leur type",
+     x="Génération",
+     y = "Total stats",
+     color = "Type")
+
+```
+
+## Exercice 8
+
+```{r}
+library("mixtools")
+EM_poke <- normalmixEM(poke$base_stats, mu = c(320, 480), sigma=c(50,50), k=2)
+plot(EM_poke, which=2,
+     xlab2 = "Total stats.",
+     main2 = "Distribution de densité de la sommes des statistiques\n des pokémons",
+           lwd2=0.8)
+lines(density(EM_poke$x), lty=2, lwd=0.8)
+```
+
+## Exerice 9 
+
+```{r, results='hide', fig.keep='all'}
+library("corrplot")
+source("http://www.sthda.com/upload/rquery_cormat.r")
+
+num_var <- poke[,24:ncol(poke)]
+col<- colorRampPalette(c("red", "white", "blue"))(20)
+rquery.cormat(num_var, graphType="heatmap", col = col)
+```
+
+Donner une analyse du dernier diagramme (carte de chaleur et dendrogramme). 
+
+>_La carte de chaleur permet  de connaître les relations entre les variables. Le dendrogramme permet quand lui de montre les liasions entre les variables._
+
+## Exerice 10
+
+Proposer 3 scénarios d'analyse que vous détaillerez et illustrerez selon votre choix.
+En particulier, vous préciserez et justifierez :
+
+- Votre scénario d'analyse (but et démarche),
+
+- Les outils statistiques que vous metterez en oeuvre,
+
+- Votre choix de méthode de visualisation. 
+
+- Analyse et conclusion quant à vos observations. 
+
+
+### Scénario 1
+
+Est-ce que le bonheur du pokémon joue sur sa capture ?
+
+```{r warning=FALSE}
+library(ggplot2)
+ggplot(poke, aes(x=base_happiness, y=capt_rate)) +
+  geom_point()+
+  geom_smooth(aes(x = base_happiness, y = capt_rate), se = F,
+            method = "lm") +
+theme_classic() +
+labs(title="Évolution du cap_rate des pokémon selon leur base_happines",
+     x="base_happiness",
+     y = "capt_rate",
+     color = "Type")
+
+```
+
+>_D'après ce graphique nous pouvons voir qu'une grand majorité des pokémons ont un base\_happiness de  $\mathcal\ 65.5061$. La courbe de régression montre que si un pokémon est content plus on a de chance de l'attraper._
+
+```{r}
+cor(poke$base_happiness, poke$capt_rate)
+```
+
+>_Le graphique est trompeur car le coefficient de corrélation est en dessous de 0.5. La corrélation entre les deux variable est faible voire nulle._
+
+### Scénario 2
+
+Est-ce que la rélation entre la variable height et la variable weight nous permet de dire qu'il y a une relation avec les pokémons légendaires ?
+
+```{r}
+cor(poke$height, poke$weight)
+```
+
+>_Le coefficient de corrélation est au dessus de 0.5. La corrélation entre les deux variables est donc forte._
+
+```{r}
+library(ggplot2)
+library(viridis)
+evo_legendary <- as.numeric(poke$is_legendary)
+ggplot(poke, aes(x = height, y = weight, color = evo_legendary)) +
+  geom_point(aes(color = evo_legendary, size = weight), alpha = 0.75) +
+  scale_size(range = c(2, 7)) +  scale_color_viridis(option = "viridis") +
+     geom_smooth(color = "#666666", method = "lm") +
+     theme_classic() +
+     labs(color = "Evo. legendary",
+size = "Poids",
+x = "height",
+y = "weight",
+title = "Relation de la variable height par rapport à la variable weight")
+```
+
+>_Nous pouvons voir dans ce graphique que la variable height et la variable weight ont bien un lien. Nous pouvons aussi remarquer que les pokémon légendaire sont plus souvent grand et sont plus gros._
+
+### Scénario 3
+
+Quel est le type de Pokémon le plus susceptible d'être légendaire ?
+
+>_Pour répondre à cette question, nous devrons considérer à la fois le type primaire et secondaire du pokémon._
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+library(dplyr)
+library(tidyr)
+data1 <- table(poke$is_legendary, poke$type1)
+data2 <- table(poke$is_legendary, poke$type2)
+```
+
+>_Puis nous avec c'est deux table, nous créeons un data frame. Puis pour interpréter la typeLegendary, on peut dire qu'un pokemon de type dragon a 11/44 chances d'être légendaire. Nous allons donc modifier le data frame typeLegendary pour faire apparaitre par type de pokémon la proportion de pokémon légendaire_
+
+```{r}
+library(dplyr)
+library(tidyr)
+typeLegendary <- data.frame(data1 + data2)
+colnames(typeLegendary) = c("is_legendary", "type", "freq")
+
+typeLegendary <- typeLegendary %>%
+  mutate(is_legendary = ifelse(is_legendary==0, "non", "oui")) %>%
+  spread(key=is_legendary, value=freq) %>%
+  mutate(proportion=oui/non)
+```
+
+>_Pour visualiser les données il suffit de faire un graphique à barre :_
+
+```{r, results='hide', fig.keep='all'}
+library(ggplot2)
+ggplot(typeLegendary,aes(type, proportion, fill=type)) + 
+   geom_col() + 
+  scale_fill_manual(values= unlist(lapply(sort(unique(typeLegendary$type)), col_type)))+
+  theme_classic() +
+  theme(axis.text.x = 
+          element_text(angle=90))+
+  theme(legend.position="bottom")+
+  labs(title="Probabilité d'être un pokémon légendaire par type de pokémon",
+     x="type",
+     y = "proportion",
+     color = "Type")
+```
+
+>_Le diagramme montre clairement que les types Psychique et Dragon sont les plus susceptibles d'être légendaires. Nous pouvons constater que si un pokémon a pour type psychic, il a 34% de chances d'être légendaire._
